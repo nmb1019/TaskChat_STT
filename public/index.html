@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>タスクチャット STT/TTS版 - Task Chat</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Hiragino Sans', sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .task-info {
+            background-color: #e8f5e9;
+            border: 2px solid #4CAF50;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 25px;
+        }
+        
+        .task-info h2 {
+            color: #2e7d32;
+            margin-top: 0;
+            margin-bottom: 10px;
+        }
+        
+        .task-info p {
+            color: #1b5e20;
+            margin: 0;
+            line-height: 1.6;
+        }
+        
+        .input-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #666;
+            font-weight: bold;
+        }
+        
+        input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+        
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #4CAF50;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        button {
+            flex: 1;
+            padding: 12px 24px;
+            font-size: 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        .record-button {
+            background-color: #4CAF50;
+            color: white;
+        }
+        
+        .record-button:hover:not(:disabled) {
+            background-color: #45a049;
+        }
+        
+        .record-button.recording {
+            background-color: #f44336;
+        }
+        
+        .record-button.recording:hover {
+            background-color: #da190b;
+        }
+        
+        .reset-button {
+            background-color: #2196F3;
+            color: white;
+        }
+        
+        .reset-button:hover {
+            background-color: #1976D2;
+        }
+        
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .status {
+            text-align: center;
+            padding: 10px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+            background-color: #e3f2fd;
+            color: #1976d2;
+        }
+        
+        .transcript-section {
+            margin-top: 20px;
+        }
+        
+        .transcript-toggle {
+            width: 100%;
+            padding: 10px;
+            background-color: #2196F3;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-bottom: 10px;
+            transition: background-color 0.3s;
+        }
+        
+        .transcript-toggle:hover {
+            background-color: #1976D2;
+        }
+        
+        .conversation-box {
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            padding: 20px;
+            min-height: 200px;
+            max-height: 300px;
+            overflow-y: auto;
+            background-color: #fafafa;
+            font-family: monospace;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        
+        .conversation-box:empty::before {
+            content: "文字起こしがここに表示されます...";
+            color: #999;
+        }
+        
+        .conversation-box .user {
+            color: #1976D2;
+            font-weight: bold;
+        }
+        
+        .conversation-box .ai {
+            color: #388E3C;
+            font-weight: bold;
+        }
+        
+        audio {
+            display: none;
+        }
+        
+        .info {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 5px;
+            color: #856404;
+        }
+        
+        .info h3 {
+            margin-top: 0;
+            color: #856404;
+        }
+        
+        .info ul {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎙️ タスクチャット STT/TTS版</h1>
+        
+        <div class="task-info">
+            <h2 id="taskTitle">タスクを読み込み中...</h2>
+            <p id="taskDescription">タスクの説明を読み込み中...</p>
+        </div>
+        
+        <div class="button-group">
+            <button id="recordBtn" class="record-button">録音開始</button>
+            <button id="resetBtn" class="reset-button">会話をリセット</button>
+        </div>
+        
+        <div class="status">
+            状態: <span id="callStatus">待機中</span>
+        </div>
+        
+        <div class="transcript-section">
+            <button id="toggleTranscript" class="transcript-toggle">文字起こしを表示</button>
+            <div class="conversation-box" id="conversation" style="display: none;"></div>
+        </div>
+        
+        <div class="info">
+            <h3>使い方</h3>
+            <ul>
+                <li>上記のタスクを確認してください</li>
+                <li>「録音開始」ボタンをクリックして話しかけてください</li>
+                <li>話し終わったら「録音停止」ボタンをクリックしてください</li>
+                <li>AIが応答を返しますので、聞いてください</li>
+                <li>会話をリセットするには「会話をリセット」ボタンをクリックしてください</li>
+            </ul>
+        </div>
+    </div>
+    
+    <audio id="remoteAudio" autoplay></audio>
+    
+    <script src="js/session.js"></script>
+</body>
+</html>
